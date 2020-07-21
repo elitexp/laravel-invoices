@@ -325,14 +325,14 @@ trait InvoiceHelpers
         return $this->hasDiscount() || $this->hasItemDiscount;
     }
 
-    public function applyColspan(): void
+    public function applyColspan()
     {
         (!$this->hasItemUnits) ?: $this->table_columns++;
         (!$this->hasItemDiscount) ?: $this->table_columns++;
         (!$this->hasItemTax) ?: $this->table_columns++;
     }
 
-    public function calculateDiscount(): void
+    public function calculateDiscount()
     {
         $totalAmount = $this->total_amount;
 
@@ -346,7 +346,7 @@ trait InvoiceHelpers
         $this->total_discount = $totalAmount - $newTotalAmount;
     }
 
-    public function calculateTax(): void
+    public function calculateTax()
     {
         if ($this->taxable_amount) {
             return;
@@ -365,7 +365,7 @@ trait InvoiceHelpers
         $this->total_taxes  = $newTotalAmount - $totalAmount;
     }
 
-    public function calculateShipping(): void
+    public function calculateShipping()
     {
         $this->total_amount = PricingService::applyTax($this->total_amount, $this->shipping_amount, $this->currency_decimals);
     }
