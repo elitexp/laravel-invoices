@@ -225,7 +225,7 @@ class InvoiceItem
     /**
      * @param int $decimals
      */
-    public function calculateDiscount(int $decimals): void
+    public function calculateDiscount(int $decimals)
     {
         $subTotal = $this->sub_total_price;
 
@@ -242,7 +242,7 @@ class InvoiceItem
     /**
      * @param int $decimals
      */
-    public function calculateTax(int $decimals): void
+    public function calculateTax(int $decimals)
     {
         $subTotal = $this->sub_total_price;
 
