@@ -208,7 +208,7 @@ trait InvoiceHelpers
     /**
      * @throws Exception
      */
-    protected function beforeRender(): void
+    protected function beforeRender()
     {
         $this->validate();
         $this->calculate();
