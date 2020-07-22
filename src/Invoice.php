@@ -29,7 +29,7 @@ class Invoice
     use SavesFiles;
     use SerialNumberFormatter;
 
-    const TABLE_COLUMNS = 4;
+    const TABLE_COLUMNS = 3;
 
     /**
      * @var string
@@ -89,7 +89,16 @@ class Invoice
     /**
      * @var float
      */
+    public $vat_rate;
+    /**
+     * @var float
+     */
     public $taxable_amount;
+
+    /**
+     * @var float
+     */
+    public $vatable_amount;
 
     /**
      * @var float
@@ -104,7 +113,17 @@ class Invoice
     /**
      * @var float
      */
+    public $total_vat;
+
+    /**
+     * @var float
+     */
     public $total_amount;
+
+    /**
+     * @var float
+     */
+    public $submitted_amount;
 
     /**
      * @var bool
@@ -120,6 +139,11 @@ class Invoice
      * @var bool
      */
     public $hasItemTax;
+
+    /**
+     * @var bool
+     */
+    public $hasItemVat;
 
     /**
      * @var int
@@ -241,7 +265,7 @@ class Invoice
             $template = sprintf('invoices::templates.%s', $this->template);
             $view     = View::make($template, ['invoice' => $this]);
             $html     = mb_convert_encoding($view, 'HTML-ENTITIES', 'UTF-8');
-
+            //die($view);
             $this->pdf    = PDF::setOptions(['enable_php' => true])->loadHtml($html);
             $this->output = $this->pdf->output();
         }

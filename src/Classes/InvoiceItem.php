@@ -39,6 +39,11 @@ class InvoiceItem
     /**
      * @var float
      */
+    public $total_price;
+
+    /**
+     * @var float
+     */
     public $discount;
 
     /**
@@ -51,10 +56,22 @@ class InvoiceItem
      */
     public $tax;
 
+
     /**
      * @var float
      */
     public $tax_percentage;
+
+    /**
+     * @var float
+     */
+    public $vat;
+
+    /**
+     * @var float
+     */
+    public $vat_percentage;
+
 
     /**
      * InvoiceItem constructor.
@@ -64,6 +81,8 @@ class InvoiceItem
         $this->quantity = 1.0;
         $this->discount = 0.0;
         $this->tax      = 0.0;
+        $this->vat      = 0.0;
+        $this->total_price      = null;
     }
 
     /**
@@ -122,6 +141,17 @@ class InvoiceItem
     }
 
     /**
+     * @param float $price
+     * @return $this
+     */
+    public function totalPrice(float $price)
+    {
+        $this->total_price = $price;
+
+        return $this;
+    }
+
+    /**
      * @param float $amount
      * @param bool $byPercent
      * @return $this
@@ -131,6 +161,9 @@ class InvoiceItem
     {
         if ($this->hasDiscount()) {
             throw new Exception('InvoiceItem: unable to set discount twice.');
+        }
+        if($this->hasTotalPrice()){
+            throw new Exception('InvoiceItem: cannot set discount on item having total amount value.');
         }
 
         $this->discount                           = $amount;
@@ -153,6 +186,25 @@ class InvoiceItem
 
         $this->tax                           = $amount;
         !$byPercent ?: $this->tax_percentage = $amount;
+
+        return $this;
+    }
+
+
+    /**
+     * @param float $amount
+     * @param bool $byPercent
+     * @return $this
+     * @throws Exception
+     */
+    public function vat(float $amount, bool $byPercent = false)
+    {
+        if ($this->hasVat()) {
+            throw new Exception('InvoiceItem: unable to set VAT twice.');
+        }
+
+        $this->vat                           = $amount;
+        !$byPercent ?: $this->vat_percentage = $amount;
 
         return $this;
     }
@@ -180,12 +232,24 @@ class InvoiceItem
 
         return $this;
     }
+    /**
+     * @param float $amount
+     * @return $this
+     * @throws Exception
+     */
+    public function vatByPercent(float $amount)
+    {
+        $this->vat($amount, true);
+
+        return $this;
+    }
 
     /**
      * @return bool
      */
     public function hasUnits()
     {
+
         return !is_null($this->units);
     }
 
@@ -200,9 +264,25 @@ class InvoiceItem
     /**
      * @return bool
      */
+    public function hasTotalPrice()
+    {
+        return !is_null($this->total_price);
+    }
+
+    /**
+     * @return bool
+     */
     public function hasTax()
     {
         return $this->tax !== 0.0;
+    }
+
+    /**
+     * @return bool
+     */
+    public function hasVat()
+    {
+        return $this->vat !== 0.0;
     }
 
     /**
@@ -215,9 +295,21 @@ class InvoiceItem
             return $this;
         }
 
-        $this->sub_total_price = PricingService::applyQuantity($this->price_per_unit, $this->quantity, $decimals);
-        $this->calculateDiscount($decimals);
-        $this->calculateTax($decimals);
+        if(is_null($this->total_price)){
+            $this->sub_total_price = PricingService::applyQuantity($this->price_per_unit, $this->quantity, $decimals);
+            $this->calculateDiscount($decimals);
+            $this->calculateTax($decimals);
+            $this->calculateVat($decimals);
+
+        } else{
+            $this->sub_total_price = $this->total_price;
+
+            $this->deductVat($decimals);
+            $this->deductTax($decimals);
+
+        }
+
+
 
         return $this;
     }
@@ -242,9 +334,28 @@ class InvoiceItem
     /**
      * @param int $decimals
      */
+    public function deductDiscount(int $decimals)
+    {
+        $subTotal = $this->sub_total_price;
+
+        if ($this->discount_percentage) {
+            $newSubTotal = PricingService::applyDiscount($subTotal, $this->discount_percentage, $decimals, true);
+        } else {
+            $newSubTotal = PricingService::applyDiscount($subTotal, $this->discount, $decimals);
+        }
+
+        $this->sub_total_price = $newSubTotal;
+        $this->discount        = $subTotal - $newSubTotal;
+    }
+
+    /**
+     * @param int $decimals
+     */
     public function calculateTax(int $decimals)
     {
         $subTotal = $this->sub_total_price;
+
+
 
         if ($this->tax_percentage) {
             $newSubTotal = PricingService::applyTax($subTotal, $this->tax_percentage, $decimals, true);
@@ -254,6 +365,61 @@ class InvoiceItem
 
         $this->sub_total_price = $newSubTotal;
         $this->tax             = $newSubTotal - $subTotal;
+    }
+
+    /**
+     * @param int $decimals
+     */
+    public function deductTax(int $decimals)
+    {
+        $subTotal = $this->sub_total_price;
+
+
+
+        if ($this->tax_percentage) {
+            $newSubTotal = PricingService::deductTax($subTotal, $this->tax_percentage, $decimals, true);
+        } else {
+            $newSubTotal = PricingService::deductTax($subTotal, $this->tax, $decimals);
+        }
+
+        $this->sub_total_price = $newSubTotal;
+        $this->tax             = $subTotal-$newSubTotal;
+    }
+
+
+
+    /**
+     * @param int $decimals
+     */
+    public function calculateVat(int $decimals)
+    {
+        $subTotal = $this->sub_total_price;
+
+        if ($this->vat_percentage) {
+            $newSubTotal = PricingService::applyTax($subTotal, $this->vat_percentage, $decimals, true);
+        } else {
+            $newSubTotal = PricingService::applyTax($subTotal, $this->vat, $decimals);
+        }
+
+        $this->sub_total_price = $newSubTotal;
+        $this->vat             = $newSubTotal - $subTotal;
+    }
+
+    /**
+     * @param int $decimals
+     */
+    public function deductVat(int $decimals)
+    {
+        $subTotal = $this->sub_total_price;
+
+        if ($this->vat_percentage) {
+            $newSubTotal = PricingService::deduceVat($subTotal, $this->vat_percentage, $decimals, true);
+        } else {
+            $newSubTotal = PricingService::deduceVat($subTotal, $this->vat, $decimals);
+        }
+
+        $this->sub_total_price = $newSubTotal;
+        $this->vat             = $subTotal - $newSubTotal;
     }
 
     /**

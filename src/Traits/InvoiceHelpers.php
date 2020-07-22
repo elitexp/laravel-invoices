@@ -132,6 +132,17 @@ trait InvoiceHelpers
     }
 
     /**
+     * @param float $total_amount
+     * @return $this
+     */
+    public function submittedAmount(float $total_amount)
+    {
+        $this->submitted_amount = $total_amount;
+
+        return $this;
+    }
+
+    /**
      * @param PartyContract $seller
      * @return $this
      */
@@ -196,6 +207,15 @@ trait InvoiceHelpers
         return $this->getAmountInWords($this->total_amount);
     }
 
+    /**
+     * @return mixed
+     */
+    public function getSubmittedAmountInWords()
+    {
+        return $this->getAmountInWords($this->submitted_amount);
+    }
+
+
     public function getLogo()
     {
         $type   = pathinfo($this->logo, PATHINFO_EXTENSION);
@@ -232,9 +252,10 @@ trait InvoiceHelpers
         $total_amount   = null;
         $total_discount = null;
         $total_taxes    = null;
+        $total_vat      = null;
 
         $this->items->each(
-            function ($item) use (&$total_amount, &$total_discount, &$total_taxes) {
+            function ($item) use (&$total_amount, &$total_discount, &$total_taxes,&$total_vat) {
                 // Gates
                 if ($item->hasTax() && $this->hasTax()) {
                     throw new Exception('Invoice: you must have taxes only on items or only on invoice.');
@@ -257,9 +278,18 @@ trait InvoiceHelpers
                     $total_taxes += $item->tax;
                     $this->hasItemTax = true;
                 }
-
+                if ($item->hasVat()) {
+                    $total_vat += $item->vat;
+                    $this->hasItemVat = true;
+                }
                 // Totals
-                $total_amount += $item->sub_total_price;
+                if(!is_null($item->total_price)){
+                    $total_amount += $item->total_price;
+
+                } else {
+                    $total_amount += $item->sub_total_price;
+                }
+
             });
 
         $this->applyColspan();
@@ -271,6 +301,8 @@ trait InvoiceHelpers
          */
         $this->hasTotalAmount() ?: $this->total_amount                            = $total_amount;
         $this->hasDiscount() ? $this->calculateDiscount() : $this->total_discount = $total_discount;
+
+        $this->hasVat() ? $this->calculateVat() : $this->total_vat              = $total_vat;
         $this->hasTax() ? $this->calculateTax() : $this->total_taxes              = $total_taxes;
         !$this->hasShipping() ?: $this->calculateShipping();
 
@@ -283,6 +315,15 @@ trait InvoiceHelpers
     public function hasTax()
     {
         return !is_null($this->total_taxes);
+    }
+
+
+    /**
+     * @return bool
+     */
+    public function hasVat()
+    {
+        return !is_null($this->total_vat);
     }
 
     /**
@@ -320,6 +361,14 @@ trait InvoiceHelpers
     /**
      * @return bool
      */
+    public function hasItemOrInvoiceVat()
+    {
+        return $this->hasVat() || $this->hasItemVat;
+    }
+
+    /**
+     * @return bool
+     */
     public function hasItemOrInvoiceDiscount()
     {
         return $this->hasDiscount() || $this->hasItemDiscount;
@@ -327,9 +376,12 @@ trait InvoiceHelpers
 
     public function applyColspan()
     {
+
         (!$this->hasItemUnits) ?: $this->table_columns++;
         (!$this->hasItemDiscount) ?: $this->table_columns++;
         (!$this->hasItemTax) ?: $this->table_columns++;
+        (!$this->hasItemVat) ?: $this->table_columns++;
+
     }
 
     public function calculateDiscount()
@@ -363,6 +415,25 @@ trait InvoiceHelpers
 
         $this->total_amount = $newTotalAmount;
         $this->total_taxes  = $newTotalAmount - $totalAmount;
+    }
+
+    public function calculateVat()
+    {
+        if ($this->vatable_amount) {
+            return;
+        }
+
+        $this->vatable_amount = $this->total_amount;
+        $totalAmount          = $this->vatable_amount;
+
+        if ($this->vat_rate) {
+            $newTotalAmount = PricingService::applyTax($totalAmount, $this->vat_rate, $this->currency_decimals, true);
+        } else {
+            $newTotalAmount = PricingService::applyTax($totalAmount, $this->total_vat, $this->currency_decimals);
+        }
+
+        $this->total_amount = $newTotalAmount;
+        $this->total_vat  = $newTotalAmount - $totalAmount;
     }
 
     public function calculateShipping()
