@@ -72,6 +72,11 @@ class InvoiceItem
      */
     public $vat_percentage;
 
+    /**
+     * @var InvoiceItemData
+     */
+    public $item_data;
+
 
     /**
      * InvoiceItem constructor.
@@ -83,6 +88,7 @@ class InvoiceItem
         $this->tax      = 0.0;
         $this->vat      = 0.0;
         $this->total_price      = null;
+        $this->item_data=new InvoiceItemData();
     }
 
     /**
@@ -435,5 +441,18 @@ class InvoiceItem
             throw new Exception('InvoiceItem: price_per_unit not defined.');
         }
 
+    }
+
+
+    public function data($data){
+        if(!(is_array($data) || $data instanceof InvoiceItemData))
+            throw new Exception('InvoiceItem: Invalid Invoice Item Data.');
+        if(is_array($data)){
+            foreach($data as $key=>$value){
+                $this->item_data->$key=$value;
+            }
+        } else {
+            $this->item_data=$data;
+        }
     }
 }
