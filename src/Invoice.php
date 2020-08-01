@@ -168,20 +168,20 @@ class Invoice
     public function __construct($name = 'Invoice')
     {
         // Invoice
-        $this->name     = $name;
-        $this->seller   = app()->make(config('invoices.seller.class'));
-        $this->items    = Collection::make([]);
+        $this->name = $name;
+        $this->seller = app()->make(config('invoices.seller.class'));
+        $this->items = Collection::make([]);
         $this->template = 'default';
 
         // Date
-        $this->date           = Carbon::now();
-        $this->date_format    = config('invoices.date.format');
+        $this->date = Carbon::now();
+        $this->date_format = config('invoices.date.format');
         $this->pay_until_days = config('invoices.date.pay_until_days');
 
         // Serial Number
-        $this->series               = config('invoices.serial_number.series');
-        $this->sequence_padding     = config('invoices.serial_number.sequence_padding');
-        $this->delimiter            = config('invoices.serial_number.delimiter');
+        $this->series = config('invoices.serial_number.series');
+        $this->sequence_padding = config('invoices.serial_number.sequence_padding');
+        $this->delimiter = config('invoices.serial_number.delimiter');
         $this->serial_number_format = config('invoices.serial_number.format');
         $this->sequence(config('invoices.serial_number.sequence'));
 
@@ -189,15 +189,15 @@ class Invoice
         $this->filename($this->getDefaultFilename($this->name));
 
         // Currency
-        $this->currency_code                = config('invoices.currency.code');
-        $this->currency_fraction            = config('invoices.currency.fraction');
-        $this->currency_symbol              = config('invoices.currency.symbol');
-        $this->currency_decimals            = config('invoices.currency.decimals');
-        $this->currency_decimal_point       = config('invoices.currency.decimal_point');
+        $this->currency_code = config('invoices.currency.code');
+        $this->currency_fraction = config('invoices.currency.fraction');
+        $this->currency_symbol = config('invoices.currency.symbol');
+        $this->currency_decimals = config('invoices.currency.decimals');
+        $this->currency_decimal_point = config('invoices.currency.decimal_point');
         $this->currency_thousands_separator = config('invoices.currency.thousands_separator');
-        $this->currency_format              = config('invoices.currency.format');
+        $this->currency_format = config('invoices.currency.format');
 
-        $this->disk          = config('invoices.disk');
+        $this->disk = config('invoices.disk');
         $this->table_columns = static::TABLE_COLUMNS;
     }
 
@@ -230,17 +230,6 @@ class Invoice
     }
 
     /**
-     * @param InvoiceItem $item
-     * @return $this
-     */
-    public function addItem(InvoiceItem $item)
-    {
-        $this->items->push($item);
-
-        return $this;
-    }
-
-    /**
      * @param $items
      * @return $this
      */
@@ -254,22 +243,23 @@ class Invoice
     }
 
     /**
+     * @param InvoiceItem $item
+     * @return $this
+     */
+    public function addItem(InvoiceItem $item)
+    {
+        $this->items->push($item);
+
+        return $this;
+    }
+
+    /**
      * @return $this
      * @throws Exception
      */
-    public function render()
+    public function renderOnly()
     {
-        if (!$this->pdf) {
-            $this->beforeRender();
-
-            $template = sprintf('invoices::templates.%s', $this->template);
-            $view     = View::make($template, ['invoice' => $this]);
-            $html     = mb_convert_encoding($view, 'HTML-ENTITIES', 'UTF-8');
-            //die($view);
-            $this->pdf    = PDF::setOptions(['enable_php' => true])->loadHtml($html);
-            $this->output = $this->pdf->output();
-        }
-
+        $this->beforeRender();
         return $this;
     }
 
@@ -282,9 +272,29 @@ class Invoice
         $this->render();
 
         return new Response($this->output, Response::HTTP_OK, [
-            'Content-Type'        => 'application/pdf',
+            'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="' . $this->filename . '"',
         ]);
+    }
+
+    /**
+     * @return $this
+     * @throws Exception
+     */
+    public function render()
+    {
+        if (!$this->pdf) {
+            $this->beforeRender();
+
+            $template = sprintf('invoices::templates.%s', $this->template);
+            $view = View::make($template, ['invoice' => $this]);
+            $html = mb_convert_encoding($view, 'HTML-ENTITIES', 'UTF-8');
+            //die($view);
+            $this->pdf = PDF::setOptions(['enable_php' => true])->loadHtml($html);
+            $this->output = $this->pdf->output();
+        }
+
+        return $this;
     }
 
     /**
@@ -296,9 +306,9 @@ class Invoice
         $this->render();
 
         return new Response($this->output, Response::HTTP_OK, [
-            'Content-Type'        => 'application/pdf',
+            'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'attachment; filename="' . $this->filename . '"',
-            'Content-Length'      => strlen($this->output),
+            'Content-Length' => strlen($this->output),
         ]);
     }
 }
