@@ -160,6 +160,18 @@ class Invoice
      */
     public $output;
 
+
+    /**
+     * @var string
+     */
+    public $paper;
+
+    /**
+     * @var string
+     */
+    public $orientation;
+
+
     /**
      * Invoice constructor.
      * @param string $name
@@ -198,6 +210,8 @@ class Invoice
         $this->currency_format = config('invoices.currency.format');
 
         $this->disk = config('invoices.disk');
+        $this->paper = config('invoices.paper.size');
+        $this->orientation = config('invoices.paper.orientation');
         $this->table_columns = static::TABLE_COLUMNS;
     }
 
@@ -264,6 +278,17 @@ class Invoice
     }
 
     /**
+     * @return $this
+     * @throws Exception
+     */
+    public function setPaper($paper,$orientation='portrait')
+    {
+        $this->paper=$paper;
+        $this->orientation=$orientation;
+        return $this;
+    }
+
+    /**
      * @return Response
      * @throws Exception
      */
@@ -290,7 +315,9 @@ class Invoice
             $view = View::make($template, ['invoice' => $this]);
             $html = mb_convert_encoding($view, 'HTML-ENTITIES', 'UTF-8');
             //die($view);
-            $this->pdf = PDF::setOptions(['enable_php' => true])->loadHtml($html);
+            $this->pdf = PDF::setOptions(['enable_php' => true])
+                ->setPaper($this->paper,$this->orientation)
+                ->loadHtml($html);
             $this->output = $this->pdf->output();
         }
 
