@@ -44,6 +44,6 @@ class PricingService
             return round($target / (1 + $vat / 100), $decimals);
         }
 
-        return round($target - $tax, $decimals);
+        return round($target - $vat, $decimals);
     }
 }
